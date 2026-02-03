@@ -53,6 +53,11 @@ class GUISetup:
             accelerator="Ctrl+Z"
         )
         edit_menu.add_command(
+            label="Redo", 
+            command=callbacks['redo_operation'], 
+            accelerator="Ctrl+Y"
+        )
+        edit_menu.add_command(
             label="Reset to Original", 
             command=callbacks['reset_image']
         )
@@ -61,6 +66,7 @@ class GUISetup:
         root.bind('<Control-o>', lambda e: callbacks['open_image']())
         root.bind('<Control-s>', lambda e: callbacks['save_image']())
         root.bind('<Control-z>', lambda e: callbacks['undo_operation']())
+        root.bind('<Control-y>', lambda e: callbacks['redo_operation']())
     
     @staticmethod
     def setup_main_layout(root):

@@ -15,6 +15,7 @@ class ImageProcessor:
         self.current_image = None
         self.image_path = None
         self.history = []  # We'll stash old versions here so we can undo mistakes
+        self.redo_stack = [] # We'll stash undone versions here so we can redo them
         
     def load_image(self, file_path):
         """
@@ -34,11 +35,14 @@ class ImageProcessor:
             self.image_path = file_path
             # Start our history with this fresh image
             self.history = [self.current_image.copy()]
+            self.redo_stack = [] # Clear redo stack on new load
             return True
         except Exception as e:
             print(f"Oops, couldn't load that: {e}")
             return False
-    
+            
+    # ... (skipping save_image, get_current_image, get_image_info methods as they don't need changes) ...
+
     def save_image(self, file_path):
         """
         Saves your masterpiece to disk.
@@ -96,6 +100,8 @@ class ImageProcessor:
             # Keep only the last 10 changes to save RAM
             if len(self.history) > 10:
                 self.history.pop(0)
+            # If we make a new change, we can't redo old stuff anymore
+            self.redo_stack.clear()
     
     def undo(self):
         """
@@ -105,8 +111,27 @@ class ImageProcessor:
             bool: True if we went back, False if there's nowhere to go.
         """
         if len(self.history) > 1:
+            # Save current state to redo stack before undoing
+            self.redo_stack.append(self.current_image.copy())
+            
             self.history.pop()  # Toss the current broken state
             self.current_image = self.history[-1].copy() # Restore the good one
+            return True
+        return False
+
+    def redo(self):
+        """
+        Steps forward to the state we just undid.
+        
+        Returns:
+            bool: True if we went forward, False if there's nowhere to go.
+        """
+        if self.redo_stack:
+            # Save current state to history (so we can undo this redo)
+            self.history.append(self.current_image.copy())
+            
+            # Restore from redo stack
+            self.current_image = self.redo_stack.pop()
             return True
         return False
     
