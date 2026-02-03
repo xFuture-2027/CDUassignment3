@@ -60,6 +60,7 @@ class ImageProcessorApp:
             'save_image_as': self.save_image_as,
             'exit_application': self.exit_application,
             'undo_operation': self.undo_operation,
+            'redo_operation': self.redo_operation,
             'reset_image': self.reset_image,
             'apply_grayscale': self.apply_grayscale,
             'apply_blur': self.apply_blur,
@@ -195,6 +196,13 @@ class ImageProcessorApp:
             self.update_display()
         else:
             messagebox.showinfo("Info", "Nothing to undo!")
+
+    def redo_operation(self):
+        """Un-oops button. Goes forward one step if you undid too much."""
+        if self.image_processor.redo():
+            self.update_display()
+        else:
+            messagebox.showinfo("Info", "Nothing to redo!")
     
     def reset_image(self):
         """Nuke everything and go back to the original image."""
