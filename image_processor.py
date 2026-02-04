@@ -5,27 +5,46 @@ import os
 
 class ImageProcessor:
     """
-    Handles the heavy lifting for image edits using OpenCV.
-    Keeps the image data safe and provides easy tools to change it.
+   A robust wrapper class for OpenCV image processing operations.
+   
+   Resposibilities:
+   1. Manage image loading and saving.
+   2. Maintain an Undo/Redo history stack to prevent data loss.
+   3. Procide high-level methods for common image manipulations (blur, contrast, resize, etc.).
     """
     
     def __init__(self):
-        """Sets up the processor and gets our history list ready for undos."""
+        """
+        Initialize the processor with empty states.
+        
+        Attributes:
+            original_imaghe (numpy.ndarray): The pristine copy of the loaded image (for resting).
+            current_image (numpy.ndarray): The active image being edited.
+            image_path (str): File path of the loaded image.
+            history (list): Stack of previous image states for 'Undo'.
+            redo_stack (list): Stack of undone states for 'Redo'.
+            """
         self.original_image = None
         self.current_image = None
         self.image_path = None
+        
+        # History stacks for time-traveling through edits
         self.history = []  # We'll stash old versions here so we can undo mistakes
         self.redo_stack = [] # We'll stash undone versions here so we can redo them
         
+#----------------------------------------------------------------------------------------------------------------
+# SECTRION 1: FILE OPERATIONS (Load/Save)
+#----------------------------------------------------------------------------------------------------------------
+        
     def load_image(self, file_path):
         """
-        Grabs an image from your computer.
+        Loads an image from the disk into memory.
         
         Args:
-            file_path (str): Where the file lives.
+            file_path (str): The absolute or relative path to the image file.
             
         Returns:
-            bool: True if we got it, False if something broke.
+            bool: True if loading was successful, False otherwise.
         """
         try:
             self.original_image = cv2.imread(file_path)
@@ -59,8 +78,12 @@ class ImageProcessor:
                 return True
             return False
         except Exception as e:
-            print(f"Trouble saving the file: {e}")
+            print(f"Exception occured while saving image: {e}")
             return False
+    
+    #----------------------------------------------------------------------------------------------------------------
+    # SECTION 2: STATE MANAGEMENT (Info & Getters)
+    #----------------------------------------------------------------------------------------------------------------
     
     def get_current_image(self):
         """
@@ -84,7 +107,13 @@ class ImageProcessor:
         
         height, width = self.current_image.shape[:2]
         # Check if it's color (3 channels) or grayscale (1 channel)
-        channels = self.current_image.shape[2] if len(self.current_image.shape) > 2 else 1
+        
+        # Determine channels (Clolor=3, Grayscale=1 usually)
+        # We check length because grayscale images might only have shape (H, W)
+        if len(self.current_image.shape) > 2:
+            channels = self.current_image.shape[2]
+        else:
+            channels = 1
         
         return {
             'width': width,
@@ -92,6 +121,10 @@ class ImageProcessor:
             'channels': channels,
             'filename': os.path.basename(self.image_path) if self.image_path else "Untitled"
         }
+    
+    #----------------------------------------------------------------------------------------------------------------
+    # SECTION 3: HISTORY MANAGEMENT (Undo/Redo)
+    #----------------------------------------------------------------------------------------------------------------
     
     def add_to_history(self):
         """Snapshots the current image before we change it."""
@@ -139,9 +172,13 @@ class ImageProcessor:
         """Scraps all changes and goes back to how it started."""
         if self.original_image is not None:
             self.current_image = self.original_image.copy()
+            # Reset history to just the original state
             self.history = [self.current_image.copy()]
+            self.redo_stack.clear()
     
-    # ==================== Image Processing Tools ====================
+    #----------------------------------------------------------------------------------------------------------------
+    # SECTION 4: IMAGE TRANSFORMATION 
+    #----------------------------------------------------------------------------------------------------------------
     
     def apply_grayscale(self):
         """
@@ -166,10 +203,12 @@ class ImageProcessor:
             if intensity % 2 == 0:
                 intensity += 1
             intensity = max(1, min(99, intensity))
+            
+            # Applyt blur
             self.current_image = cv2.GaussianBlur(
                 self.current_image, 
                 (intensity, intensity), 
-                0
+                0 # SigmaX (0 means auto-calculate from kernel size)
             )
     
     def apply_edge_detection(self, threshold1=100, threshold2=200):
@@ -199,7 +238,8 @@ class ImageProcessor:
         """
         if self.current_image is not None:
             self.add_to_history()
-            # HSV splits color (Hue/Sat) from brightness (Value)
+            
+            # Convert BGR to HSV
             hsv = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2HSV)
             h, s, v = cv2.split(hsv)
             
@@ -220,6 +260,7 @@ class ImageProcessor:
         """
         if self.current_image is not None:
             self.add_to_history()
+            
             # convertScaleAbs is a fast way to do linear transforms
             self.current_image = cv2.convertScaleAbs(
                 self.current_image, 
@@ -236,21 +277,17 @@ class ImageProcessor:
         """
         if self.current_image is not None:
             self.add_to_history()
+            
             if angle == 90:
-                self.current_image = cv2.rotate(
-                    self.current_image, 
-                    cv2.ROTATE_90_CLOCKWISE
-                )
+                code = cv2.ROTATE_90_CLOCKWISE
             elif angle == 180:
-                self.current_image = cv2.rotate(
-                    self.current_image, 
-                    cv2.ROTATE_180
-                )
+                code = cv2.ROTATE_180
             elif angle == 270:
-                self.current_image = cv2.rotate(
-                    self.current_image, 
-                    cv2.ROTATE_90_COUNTERCLOCKWISE
-                )
+                code = cv2.ROTATE_90_COUNTERCLOCKWISE
+            else:
+                return # Invalid angle, do nothing
+            
+            self.current_image = cv2.rotate(self.current_image, code)
     
     def flip_image(self, direction):
         """
