@@ -281,6 +281,13 @@ class ImageProcessor:
             width = int(self.current_image.shape[1] * scale_percent / 100)
             height = int(self.current_image.shape[0] * scale_percent / 100)
             
+            # Prevent crash if image becomes too small
+            if width <= 0 or height <= 0:
+                print("Image would become too small, skipping resize.")
+                return
+
+            self.add_to_history()
+            
             # Resize it
             self.current_image = cv2.resize(
                 self.current_image, 
