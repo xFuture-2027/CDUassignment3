@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 # Import our custom classes
-from image_processor_class import ImageProcessor
-from image_display_class import ImageDisplay
+from image_processor import ImageProcessor
+from image_display import ImageDisplay
 from gui_setup import GUISetup
 
 
