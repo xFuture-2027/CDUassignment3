@@ -5,8 +5,8 @@ import numpy as np
 
 class ImageDisplay:
     """
-    Shows the pictures on the screen.
-    Makes sure they fit in the box and don't look squished.
+    Manages displaying images on a Tkinter Canvas.
+    Ensuring images fit within specific dimensions while maintaining aspect ratio.
     """
     def __init__(self, canvas, max_width=700, max_height=550):
         self.canvas = canvas
@@ -16,11 +16,11 @@ class ImageDisplay:
 
     def display_image(self, cv_image):
         """
-        Takes the raw image data and paints it onto the canvas.
+        Takes the raw OpenCV image data, converts it, resize it, and paints it onto the canvas centered.
         Also handles the tricky bit of keeping the aspect ratio correct.
         
         Args:
-            cv_image: The image data (OpenCV format).
+            cv_image: The image data (OpenCV format, BGR or Grayscale).
         """
         if cv_image is None:
             self.canvas.delete("all")
@@ -41,29 +41,27 @@ class ImageDisplay:
             print(f"Error converting image: {e}")
             return
 
-        # Convert to PIL Image
+        # 2. Convert to PIL Image
         pil_image = Image.fromarray(rgb_image)
 
-        # Calculate new dimensions to fit within max_width/height
+        # 3. Calculate new dimensions to fit within max_width/height
         width, height = pil_image.size
         
-        # Avoid division by zero
         if width == 0 or height == 0:
             return
             
         ratio = min(self.max_width / width, self.max_height / height)
         
-        # Create new dimensions
         new_width = int(width * ratio)
         new_height = int(height * ratio)
         
-        # Resize image using LANCZOS for high quality
+        # 4. Resize image using LANCZOS for high quality
         pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # Convert to ImageTk
+        # 5. Convert to ImageTk
         self.photo_image = ImageTk.PhotoImage(pil_image)
 
-        # Clear canvas and draw image centered
+        # 6. Clear canvas and draw image centered
         self.canvas.delete("all")
         
         # We place it in the center of the canvas area we are given
@@ -71,6 +69,7 @@ class ImageDisplay:
         # we can assume center is max_width/2, max_height/2
         
         # Adjust center based on actual canvas size if available, but relying on passed max is safer for layout logic usually
+        # Determine centering coordinates
         # Let's verify canvas size:
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
