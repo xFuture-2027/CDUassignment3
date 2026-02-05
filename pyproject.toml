@@ -4,6 +4,9 @@ version = "1.0.0"
 description = "HIT137 Assignment 3 - Image Processing Desktop Application"
 authors = [
     {name = "Suraj Karki", email = "s397088@students.cdu.edu.au"}
+    {name = "Prasanna Pandey", email = "s398730@students.cdu.edu.au"}
+    {name = "Shreejan Shrestha", email = "s397671@students.cdu.edu.au"}
+    {name = "Sumit Maharjan", email = "s397861@students.cdu.edu.au"}
 ]
 readme = "README.md"
 requires-python = ">=3.14"
