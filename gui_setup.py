@@ -1,234 +1,262 @@
 import tkinter as tk
 from tkinter import ttk
 
-"""
-gui_setup.py
-
-This module builds all graphical components of the Image Editor application.
-It separates UI layout from processing logic, supporting clean OOP structure.
-"""
-
-# =========================================================================
-# TOOLTIP HELPER CLASS (HD-LEVEL UI POLISH)
-# =========================================================================
-class ToolTip:
-    """Simple tooltip display for widgets."""
-    def __init__(self, widget, text):
-        self.widget = widget
-        self.text = text
-        self.tipwindow = None
-        widget.bind("<Enter>", self.show_tip)
-        widget.bind("<Leave>", self.hide_tip)
-
-    def show_tip(self, event=None):
-        x = self.widget.winfo_rootx() + 20
-        y = self.widget.winfo_rooty() + 20
-        self.tipwindow = tw = tk.Toplevel(self.widget)
-        tw.wm_overrideredirect(True)
-        tw.wm_geometry(f"+{x}+{y}")
-        label = tk.Label(tw, text=self.text, background="#ffffe0",
-                         relief=tk.SOLID, borderwidth=1)
-        label.pack()
-
-    def hide_tip(self, event=None):
-        if self.tipwindow:
-            self.tipwindow.destroy()
-
-
 class GUISetup:
-    """Handles construction of all GUI components."""
+    """
+    The Interface Architect.
+    
+    This static class is responsible for building the visual elements of the application.
+    By separating the 'View' (GUI) code from the 'Controller' (Logic) code, 
+    we keep the main file clean and easy to read.
+    """
 
     # =========================================================================
-    # 1. MENU BAR
+    # 1. TOP SECTION: MENU BAR
     # =========================================================================
+    
     @staticmethod
     def setup_menu(root, callbacks):
+        """
+        Constructs the top navigation bar (File, Edit).
+        
+        Args:
+            root: The main Tkinter window.
+            callbacks (dict): Dictionary connecting menu clicks to logic functions.
+        """
+        # Create the main menu container
         menubar = tk.Menu(root)
         root.config(menu=menubar)
-
+        
+        # --- File Menu ---
+        # 'tearoff=0' prevents the menu from being dragged out as a separate window
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
-
+        
+        # Add commands with keyboard shortcuts listed
         file_menu.add_command(label="Open", command=callbacks['open_image'], accelerator="Ctrl+O")
         file_menu.add_command(label="Save", command=callbacks['save_image'], accelerator="Ctrl+S")
         file_menu.add_command(label="Save As", command=callbacks['save_image_as'], accelerator="Ctrl+Shift+S")
-        file_menu.add_separator()
+        file_menu.add_separator() # Visual divider
         file_menu.add_command(label="Exit", command=callbacks['exit_application'])
-
+        
+        # --- Edit Menu ---
         edit_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Edit", menu=edit_menu)
-
+        
         edit_menu.add_command(label="Undo", command=callbacks['undo_operation'], accelerator="Ctrl+Z")
         edit_menu.add_command(label="Redo", command=callbacks['redo_operation'], accelerator="Ctrl+Y")
         edit_menu.add_command(label="Reset to Original", command=callbacks['reset_image'])
-
-        # Keyboard Shortcuts
+        
+        # --- Bind Keyboard Shortcuts ---
+        # This links the actual physical key presses to the functions
         root.bind('<Control-o>', lambda e: callbacks['open_image']())
         root.bind('<Control-s>', lambda e: callbacks['save_image']())
-        root.bind('<Control-Shift-S>', lambda e: callbacks['save_image_as']())  # NEW
         root.bind('<Control-z>', lambda e: callbacks['undo_operation']())
         root.bind('<Control-y>', lambda e: callbacks['redo_operation']())
 
     # =========================================================================
-    # 2. IMAGE DISPLAY AREA
+    # 2. CENTER SECTION: IMAGE DISPLAY (CANVAS)
     # =========================================================================
+
     @staticmethod
     def setup_main_layout(root):
+        """
+        Creates the central area where the image is displayed.
+        
+        Structure:
+        [ Main Frame (Dark Grey) ]
+          └── [ Canvas Frame (Bordered) ]
+                └── [ Canvas (The Drawing Board) ]
+
+        Returns:
+            tk.Canvas: The canvas object so the logic class can draw images on it.
+        """
+        # Main background container
         main_frame = tk.Frame(root, bg='#2b2b2b')
         main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
+        
+        # Decorative frame to give the image a sunken/bordered look
         canvas_frame = tk.Frame(main_frame, bg='#1e1e1e', bd=2, relief=tk.SUNKEN)
         canvas_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
-
+        
+        # The actual canvas widget where pixels are drawn
         canvas = tk.Canvas(canvas_frame, bg='#1e1e1e', width=700, height=550)
         canvas.pack(fill=tk.BOTH, expand=True)
-
+        
         return canvas
 
     # =========================================================================
-    # 3. CONTROL PANEL
+    # 3. RIGHT SECTION: CONTROL PANEL (SIDEBAR)
     # =========================================================================
+
     @staticmethod
     def setup_control_panel(root, callbacks, variables):
+        """
+        Builds the sidebar containing buttons, sliders, and tabs.
+        """
+        # Fixed width sidebar
         control_frame = tk.Frame(root, bg='#3c3c3c', width=280)
         control_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=5, pady=5)
-        control_frame.pack_propagate(False)
-
-        title_label = tk.Label(control_frame, text="Image Effects",
-                               font=('Segoe UI', 14, 'bold'), bg='#3c3c3c', fg='white')
+        # prevent frame from shrinking to fit content (keeps it 280px wide)
+        control_frame.pack_propagate(False) 
+        
+        # -- Title --
+        title_label = tk.Label(
+            control_frame, text="Image Effects", 
+            font=('Segoe UI', 14, 'bold'), bg='#3c3c3c', fg='white'
+        )
         title_label.pack(pady=(15, 10))
-
+        
+        # -- Global Action Buttons (Open / Reset) --
         btn_frame = tk.Frame(control_frame, bg='#3c3c3c')
         btn_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Button(btn_frame, text="📂 Open Image", command=callbacks['open_image'], 
+                  bg='#28a745', fg='black', relief=tk.FLAT).pack(fill=tk.X, pady=2)
+                  
+        tk.Button(btn_frame, text="↺ Reset Changes", command=callbacks['reset_image'], 
+                  bg='#dc3545', fg='black', relief=tk.FLAT).pack(fill=tk.X, pady=2)
 
-        open_btn = tk.Button(btn_frame, text="📂 Open Image", command=callbacks['open_image'],
-                             bg='#28a745', fg='black', relief=tk.FLAT)
-        open_btn.pack(fill=tk.X, pady=2)
-        ToolTip(open_btn, "Open an image file")
-
-        reset_btn = tk.Button(btn_frame, text="↺ Reset Changes", command=callbacks['reset_image'],
-                              bg='#dc3545', fg='black', relief=tk.FLAT)
-        reset_btn.pack(fill=tk.X, pady=2)
-        ToolTip(reset_btn, "Restore original image")
-
+        # -- Tabbed Interface (Notebook) --
+        # Configure the style for the tabs to match the dark theme
         style = ttk.Style()
         style.theme_use('clam')
         style.configure('TNotebook', background='#3c3c3c', borderwidth=0)
         style.configure('TNotebook.Tab', background='#505050', foreground='white', padding=[10, 2])
-        style.map('TNotebook.Tab', background=[('selected', '#007acc')])
-
+        style.map('TNotebook.Tab', background=[('selected', '#007acc')], foreground=[('selected', 'white')])
+        
         notebook = ttk.Notebook(control_frame, style='TNotebook')
         notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
+        
+        # Delegate the creation of specific tabs to helper methods
         GUISetup._setup_basic_filters_tab(notebook, callbacks, variables)
         GUISetup._setup_adjustments_tab(notebook, callbacks, variables)
         GUISetup._setup_transform_tab(notebook, callbacks, variables)
 
     # =========================================================================
-    # FILTERS TAB
+    # 4. INTERNAL TABS (HELPER METHODS)
     # =========================================================================
+
     @staticmethod
     def _setup_basic_filters_tab(notebook, callbacks, variables):
-        tab = tk.Frame(notebook, bg='#3c3c3c')
-        notebook.add(tab, text='Filters')
-
-        tk.Button(tab, text="Grayscale", command=callbacks['apply_grayscale'],
-                  bg='#007acc', fg='black').pack(pady=10, fill=tk.X, padx=10)
-
-        tk.Button(tab, text="Edge Detection", command=callbacks['apply_edge_detection'],
-                  bg='#007acc', fg='black').pack(pady=5, fill=tk.X, padx=10)
-
-        blur_frame = tk.LabelFrame(tab, text="Blur Effect", bg='#3c3c3c', fg='white')
+        """Helper: Populates the 'Filters' tab (Grayscale, Edge, Blur)."""
+        basic_tab = tk.Frame(notebook, bg='#3c3c3c')
+        notebook.add(basic_tab, text='Filters')
+        
+        # 1. Simple Click Effects
+        tk.Button(basic_tab, text="Grayscale", command=callbacks['apply_grayscale'], 
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=10, fill=tk.X, padx=10)
+        
+        tk.Button(basic_tab, text="Edge Detection", command=callbacks['apply_edge_detection'], 
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=5, fill=tk.X, padx=10)
+        
+        # 2. Blur Slider Group
+        blur_frame = tk.LabelFrame(basic_tab, text="Blur Effect", bg='#3c3c3c', fg='white', font=('Segoe UI', 10, 'bold'))
         blur_frame.pack(pady=10, padx=10, fill=tk.X)
-
-        tk.Scale(blur_frame, from_=1, to=51, orient=tk.HORIZONTAL,
-                 variable=variables['blur_var'], bg='#3c3c3c',
-                 command=lambda v: callbacks['update_blur_label']()).pack(fill=tk.X, padx=5)
-
-        variables['blur_label'] = tk.Label(blur_frame,
-                                           text=f"Value: {variables['blur_var'].get()}",
-                                           bg='#3c3c3c', fg='#cccccc')
+        
+        tk.Label(blur_frame, text="Intensity:", bg='#3c3c3c', fg='#cccccc').pack(anchor=tk.W, padx=5)
+        
+        # Note: 'command' here updates the label text as you drag
+        blur_slider = tk.Scale(
+            blur_frame, from_=1, to=51, orient=tk.HORIZONTAL, 
+            variable=variables['blur_var'], bg='#3c3c3c', fg='white', 
+            troughcolor='#505050', highlightthickness=0,
+            command=lambda v: callbacks['update_blur_label']()
+        )
+        blur_slider.pack(fill=tk.X, padx=5)
+        
+        # Dynamic label showing current slider value
+        variables['blur_label'] = tk.Label(
+            blur_frame, text=f"Value: {variables['blur_var'].get()}", 
+            bg='#3c3c3c', fg='#cccccc'
+        )
         variables['blur_label'].pack()
+        
+        tk.Button(blur_frame, text="Apply Blur", command=callbacks['apply_blur'], 
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=5, fill=tk.X, padx=5)
 
-        tk.Button(blur_frame, text="Apply Blur", command=callbacks['apply_blur'],
-                  bg='#007acc', fg='black').pack(pady=5, fill=tk.X, padx=5)
-
-    # =========================================================================
-    # ADJUST TAB
-    # =========================================================================
     @staticmethod
     def _setup_adjustments_tab(notebook, callbacks, variables):
-        tab = tk.Frame(notebook, bg='#3c3c3c')
-        notebook.add(tab, text='Adjust')
-
-        bright_frame = tk.LabelFrame(tab, text="Brightness", bg='#3c3c3c', fg='white')
+        """Helper: Populates the 'Adjust' tab (Brightness, Contrast)."""
+        adjust_tab = tk.Frame(notebook, bg='#3c3c3c')
+        notebook.add(adjust_tab, text='Adjust')
+        
+        # 1. Brightness Group
+        bright_frame = tk.LabelFrame(adjust_tab, text="Brightness", bg='#3c3c3c', fg='white', font=('Segoe UI', 10, 'bold'))
         bright_frame.pack(pady=10, padx=10, fill=tk.X)
-
-        tk.Scale(bright_frame, from_=-100, to=100, orient=tk.HORIZONTAL,
-                 variable=variables['brightness_var'], bg='#3c3c3c').pack(fill=tk.X, padx=5)
-
+        
+        tk.Scale(bright_frame, from_=-100, to=100, orient=tk.HORIZONTAL, variable=variables['brightness_var'],
+                 bg='#3c3c3c', fg='white', troughcolor='#505050', highlightthickness=0).pack(fill=tk.X, padx=5)
+        
         tk.Button(bright_frame, text="Apply Brightness", command=callbacks['apply_brightness'],
-                  bg='#007acc', fg='black').pack(pady=5, fill=tk.X, padx=5)
-
-        contrast_frame = tk.LabelFrame(tab, text="Contrast", bg='#3c3c3c', fg='white')
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=5, fill=tk.X, padx=5)
+        
+        # 2. Contrast Group
+        contrast_frame = tk.LabelFrame(adjust_tab, text="Contrast", bg='#3c3c3c', fg='white', font=('Segoe UI', 10, 'bold'))
         contrast_frame.pack(pady=10, padx=10, fill=tk.X)
-
-        tk.Scale(contrast_frame, from_=0.5, to=3.0, resolution=0.1, orient=tk.HORIZONTAL,
-                 variable=variables['contrast_var'], bg='#3c3c3c').pack(fill=tk.X, padx=5)
-
+        
+        # Resolution=0.1 allows decimal selection (e.g., 1.5)
+        tk.Scale(contrast_frame, from_=0.5, to=3.0, resolution=0.1, orient=tk.HORIZONTAL, variable=variables['contrast_var'],
+                 bg='#3c3c3c', fg='white', troughcolor='#505050', highlightthickness=0).pack(fill=tk.X, padx=5)
+        
         tk.Button(contrast_frame, text="Apply Contrast", command=callbacks['apply_contrast'],
-                  bg='#007acc', fg='black').pack(pady=5, fill=tk.X, padx=5)
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=5, fill=tk.X, padx=5)
 
-    # =========================================================================
-    # TRANSFORM TAB
-    # =========================================================================
     @staticmethod
     def _setup_transform_tab(notebook, callbacks, variables):
-        tab = tk.Frame(notebook, bg='#3c3c3c')
-        notebook.add(tab, text='Transform')
-
-        rotate_frame = tk.LabelFrame(tab, text="Rotate", bg='#3c3c3c', fg='white')
+        """Helper: Populates the 'Transform' tab (Rotate, Flip, Resize)."""
+        transform_tab = tk.Frame(notebook, bg='#3c3c3c')
+        notebook.add(transform_tab, text='Transform')
+        
+        # 1. Rotation Buttons
+        rotate_frame = tk.LabelFrame(transform_tab, text="Rotate", bg='#3c3c3c', fg='white', font=('Segoe UI', 10, 'bold'))
         rotate_frame.pack(pady=10, padx=10, fill=tk.X)
-
+        
         btn_frame = tk.Frame(rotate_frame, bg='#3c3c3c')
-        btn_frame.pack(pady=5)
-
+        btn_frame.pack(pady=5, fill=tk.X)
+        
+        # Loop to create buttons dynamically for 90, 180, 270
         for angle in [90, 180, 270]:
-            tk.Button(btn_frame, text=f"{angle}°",
-                      command=lambda a=angle: callbacks['rotate_image'](a),
-                      bg='#6c757d', fg='black', width=5).pack(side=tk.LEFT, padx=3)
-
-        flip_frame = tk.LabelFrame(tab, text="Flip", bg='#3c3c3c', fg='white')
+            tk.Button(btn_frame, text=f"{angle}°", command=lambda a=angle: callbacks['rotate_image'](a),
+                      bg='#6c757d', fg='black', width=5, relief=tk.FLAT).pack(side=tk.LEFT, padx=3)
+        
+        # 2. Flip Buttons
+        flip_frame = tk.LabelFrame(transform_tab, text="Flip", bg='#3c3c3c', fg='white', font=('Segoe UI', 10, 'bold'))
         flip_frame.pack(pady=10, padx=10, fill=tk.X)
-
-        tk.Button(flip_frame, text="Flip Horizontal",
-                  command=lambda: callbacks['flip_image']('horizontal'),
-                  bg='#007acc', fg='black').pack(pady=2, fill=tk.X, padx=5)
-
-        tk.Button(flip_frame, text="Flip Vertical",
-                  command=lambda: callbacks['flip_image']('vertical'),
-                  bg='#007acc', fg='black').pack(pady=2, fill=tk.X, padx=5)
-
-        resize_frame = tk.LabelFrame(tab, text="Resize/Scale", bg='#3c3c3c', fg='white')
+        
+        tk.Button(flip_frame, text="Flip Horizontal", command=lambda: callbacks['flip_image']('horizontal'),
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=2, fill=tk.X, padx=5)
+        tk.Button(flip_frame, text="Flip Vertical", command=lambda: callbacks['flip_image']('vertical'),
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=2, fill=tk.X, padx=5)
+        
+        # 3. Resize Slider
+        resize_frame = tk.LabelFrame(transform_tab, text="Resize/Scale", bg='#3c3c3c', fg='white', font=('Segoe UI', 10, 'bold'))
         resize_frame.pack(pady=10, padx=10, fill=tk.X)
-
-        tk.Scale(resize_frame, from_=10, to=200, orient=tk.HORIZONTAL,
-                 variable=variables['scale_var'], bg='#3c3c3c').pack(fill=tk.X, padx=5)
-
+        
+        # Scale from 10% to 200% size
+        tk.Scale(resize_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=variables['scale_var'],
+                 bg='#3c3c3c', fg='white', troughcolor='#505050', highlightthickness=0).pack(fill=tk.X, padx=5)
+        
         tk.Button(resize_frame, text="Apply Resize", command=callbacks['resize_image'],
-                  bg='#007acc', fg='black').pack(pady=5, fill=tk.X, padx=5)
+                  bg='#007acc', fg='black', relief=tk.FLAT).pack(pady=5, fill=tk.X, padx=5)
 
     # =========================================================================
-    # STATUS BAR (NOW DYNAMIC)
+    # 5. BOTTOM SECTION: STATUS BAR
     # =========================================================================
+
     @staticmethod
     def setup_status_bar(root):
-        status_var = tk.StringVar()
-        status_var.set("Ready - Load an image to start")
-
-        status_bar = tk.Label(root, textvariable=status_var,
-                              bd=1, relief=tk.SUNKEN, anchor=tk.W,
-                              bg='#007acc', fg='white', font=('Segoe UI', 9))
+        """
+        Creates a bar at the bottom to display messages to the user.
+        
+        Returns:
+            tk.Label: The label widget, so logic can update the text later.
+        """
+        status_bar = tk.Label(
+            root, 
+            text="Ready - Load an image to start", 
+            bd=1, relief=tk.SUNKEN, anchor=tk.W, # sunken effect looks like a status bar
+            bg='#007acc', fg='white', font=('Segoe UI', 9)
+        )
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        return status_var
+        return status_bar
