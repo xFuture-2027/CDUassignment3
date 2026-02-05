@@ -1,7 +1,18 @@
+"""
+main.py
+
+Entry point for the Image Processing Application.
+This module is responsible for initialising the GUI, coordinating user interactions,
+and delegating image operations to the ImageProcessor and ImageDisplay components.
+
+The design follows a modular architecture to improve maintainability, readability,
+and separation of concerns.
+"""
+
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-# Import our custom classes
+# Import application-specific modules
 from image_processor import ImageProcessor
 from image_display import ImageDisplay
 from gui_setup import GUISetup
@@ -9,51 +20,69 @@ from gui_setup import GUISetup
 
 class ImageProcessorApp:
     """
-    The brains of the operation.
-    This class ties together the GUI (what you see), the ImageProcessor (what does the work),
-    and the ImageDisplay (how it shows up).
+    Central controller class for the application.
+
+    This class acts as an integration layer between:
+    - GUI components (Tkinter interface)
+    - Image processing logic (ImageProcessor)
+    - Image rendering logic (ImageDisplay)
+
+    It manages user interactions and ensures that GUI events
+    correctly trigger image processing operations.
     """
-    
+
     def __init__(self, root):
         """
-        Starts the engine.
-        
+        Initialises the main application window and core components.
+
         Args:
-            root: The main Tkinter window (the container for everything).
+            root (tk.Tk): The root Tkinter window that hosts all UI elements.
         """
         self.root = root
         self.root.title("HIT137 - Image Processing Application")
         self.root.geometry("1000x700")
-        
-        # Create instance of ImageProcessor (demonstrates class interaction)
+
+        # Instantiate the image processing engine
         self.image_processor = ImageProcessor()
-        
-        # Initialize Tkinter variables for sliders
+
+        # --------------------
+        # Tkinter State Variables
+        # --------------------
+        # These variables maintain real-time UI state for sliders and controls
         self.blur_var = tk.IntVar(value=5)
         self.brightness_var = tk.IntVar(value=0)
         self.contrast_var = tk.DoubleVar(value=1.0)
         self.scale_var = tk.IntVar(value=100)
-        
-        # Dictionary to store variables and labels
+
+        # Centralised variable registry for GUI binding
         self.variables = {
             'blur_var': self.blur_var,
             'brightness_var': self.brightness_var,
             'contrast_var': self.contrast_var,
             'scale_var': self.scale_var
         }
-        
-        # Setup GUI components using GUISetup class
+
+        # Construct GUI components
         self.setup_gui()
-        
-        # Create ImageDisplay instance for displaying images
-        self.image_display = ImageDisplay(self.canvas, max_width=700, max_height=550)
-    
+
+        # Initialise image display handler
+        self.image_display = ImageDisplay(
+            self.canvas,
+            max_width=700,
+            max_height=550
+        )
+
+    # ======================================================
+    # GUI INITIALISATION
+    # ======================================================
+
     def setup_gui(self):
         """
-        Builds the interface.
-        Keeps this file clean by offloading the heavy UI construction to GUISetup.
+        Builds and configures all graphical interface components.
+
+        GUI construction is delegated to the GUISetup class to
+        maintain separation between interface layout and application logic.
         """
-        # Create callback dictionary for menu and buttons
         callbacks = {
             'open_image': self.open_image,
             'save_image': self.save_image,
@@ -72,29 +101,35 @@ class ImageProcessorApp:
             'resize_image': self.resize_image,
             'update_blur_label': self.update_blur_label
         }
-        
-        # Setup menu bar
+
+        # Initialise menu bar
         GUISetup.setup_menu(self.root, callbacks)
-        
-        # Setup main layout and get canvas
+
+        # Create main canvas layout
         self.canvas = GUISetup.setup_main_layout(self.root)
-        
-        # Setup control panel
+
+        # Create control panel with sliders and buttons
         GUISetup.setup_control_panel(self.root, callbacks, self.variables)
-        
-        # Setup status bar
+
+        # Initialise status bar
         self.status_bar = GUISetup.setup_status_bar(self.root)
-    
-    # ==================== Update Methods ====================
-    
+
+    # ======================================================
+    # DISPLAY & STATUS MANAGEMENT
+    # ======================================================
+
     def update_display(self):
-        """Refreshes what you see on screen."""
+        """
+        Refreshes the displayed image and synchronises status information.
+        """
         current_image = self.image_processor.get_current_image()
         self.image_display.display_image(current_image)
         self.update_status_bar()
-    
+
     def update_status_bar(self):
-        """Puts the file stats (size, name) into the bottom bar."""
+        """
+        Updates the status bar with metadata related to the currently loaded image.
+        """
         info = self.image_processor.get_image_info()
         if info:
             status_text = (
@@ -105,66 +140,63 @@ class ImageProcessorApp:
             self.status_bar.config(text=status_text)
         else:
             self.status_bar.config(text="No image loaded")
-    
+
     def update_blur_label(self):
-        """Updates the little text next to the blur slider so you know the value."""
+        """
+        Updates the blur intensity label to reflect the current slider value.
+        """
         value = self.blur_var.get()
         if 'blur_label' in self.variables:
             self.variables['blur_label'].config(text=f"Value: {value}")
-    
-    # ==================== File Menu Methods ====================
-    
+
+    # ======================================================
+    # FILE OPERATIONS
+    # ======================================================
+
     def open_image(self):
         """
-        Opens a file picker so you can choose an image.
-        If it loads, we show it; if not, we complain.
+        Opens a file selection dialog and loads the selected image.
         """
         file_path = filedialog.askopenfilename(
             title="Open Image",
             filetypes=[
                 ("Image files", "*.jpg *.jpeg *.png *.bmp"),
-                ("JPEG files", "*.jpg *.jpeg"),
-                ("PNG files", "*.png"),
-                ("BMP files", "*.bmp"),
                 ("All files", "*.*")
             ]
         )
-        
+
         if file_path:
             if self.image_processor.load_image(file_path):
                 self.update_display()
                 messagebox.showinfo("Success", "Image loaded successfully!")
             else:
                 messagebox.showerror("Error", "Failed to load image!")
-    
+
     def save_image(self):
         """
-        Saves over the original file.
-        We ask first because that's polite (and safer).
+        Saves changes to the original image file after user confirmation.
         """
         if self.image_processor.current_image is None:
             messagebox.showwarning("Warning", "No image to save!")
             return
-        
+
         if self.image_processor.image_path:
-            result = messagebox.askyesno(
-                "Confirm Save", 
-                "Overwrite the original file?"
-            )
-            if result:
+            if messagebox.askyesno("Confirm Save", "Overwrite the original file?"):
                 if self.image_processor.save_image(self.image_processor.image_path):
                     messagebox.showinfo("Success", "Image saved successfully!")
                 else:
                     messagebox.showerror("Error", "Failed to save image!")
         else:
             self.save_image_as()
-    
+
     def save_image_as(self):
-        """Saves a copy with a new name."""
+        """
+        Saves the image to a new file path specified by the user.
+        """
         if self.image_processor.current_image is None:
             messagebox.showwarning("Warning", "No image to save!")
             return
-        
+
         file_path = filedialog.asksaveasfilename(
             title="Save Image As",
             defaultextension=".png",
@@ -175,128 +207,106 @@ class ImageProcessorApp:
                 ("All files", "*.*")
             ]
         )
-        
+
         if file_path:
             if self.image_processor.save_image(file_path):
                 messagebox.showinfo("Success", "Image saved successfully!")
             else:
                 messagebox.showerror("Error", "Failed to save image!")
-    
-    def exit_application(self):
-        """Double checks if you really want to quit."""
-        result = messagebox.askyesno("Exit", "Are you sure you want to exit?")
-        if result:
-            self.root.quit()
-    
-    # ==================== Edit Menu Methods ====================
-    
-    def undo_operation(self):
-        """Oops button. Goes back one step."""
-        if self.image_processor.undo():
-            self.update_display()
-        else:
-            messagebox.showinfo("Info", "Nothing to undo!")
 
-    def redo_operation(self):
-        """Un-oops button. Goes forward one step if you undid too much."""
-        if self.image_processor.redo():
-            self.update_display()
-        else:
-            messagebox.showinfo("Info", "Nothing to redo!")
-    
-    def reset_image(self):
-        """Nuke everything and go back to the original image."""
-        if self.image_processor.original_image is not None:
-            self.image_processor.reset_to_original()
-            self.update_display()
-        else:
-            messagebox.showwarning("Warning", "No image loaded!")
-    
-    # ==================== Image Processing Methods ====================
-    
+    def exit_application(self):
+        """
+        Gracefully exits the application after user confirmation.
+        """
+        if messagebox.askyesno("Exit", "Are you sure you want to exit?"):
+            self.root.quit()
+
+    # ======================================================
+    # IMAGE PROCESSING OPERATIONS
+    # ======================================================
+
     def apply_grayscale(self):
-        """Turns it black and white."""
+        """Applies grayscale transformation to the image."""
         if self.image_processor.current_image is not None:
             self.image_processor.apply_grayscale()
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
-    
+
     def apply_blur(self):
-        """Makes it fuzzy based on the slider."""
+        """Applies blur effect based on user-defined intensity."""
         if self.image_processor.current_image is not None:
-            intensity = self.blur_var.get()
-            self.image_processor.apply_blur(intensity)
+            self.image_processor.apply_blur(self.blur_var.get())
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
-    
+
     def apply_edge_detection(self):
-        """Finds the outlines."""
+        """Applies edge detection algorithm to highlight contours."""
         if self.image_processor.current_image is not None:
             self.image_processor.apply_edge_detection()
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
-    
+
     def apply_brightness(self):
-        """Make it brighter or darker."""
+        """Adjusts image brightness."""
         if self.image_processor.current_image is not None:
-            value = self.brightness_var.get()
-            self.image_processor.adjust_brightness(value)
+            self.image_processor.adjust_brightness(self.brightness_var.get())
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
-    
+
     def apply_contrast(self):
-        """Pop the colors or wash them out."""
+        """Adjusts image contrast."""
         if self.image_processor.current_image is not None:
-            value = self.contrast_var.get()
-            self.image_processor.adjust_contrast(value)
+            self.image_processor.adjust_contrast(self.contrast_var.get())
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
-    
+
     def rotate_image(self, angle):
         """
-        Spins the image.
-        
+        Rotates the image by a specified angle.
+
         Args:
-            angle (int): 90, 180, or 270.
+            angle (int): Rotation angle (90, 180, or 270 degrees).
         """
         if self.image_processor.current_image is not None:
             self.image_processor.rotate_image(angle)
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
-    
+
     def flip_image(self, direction):
         """
-        Mirrors the image.
-        
+        Flips the image horizontally or vertically.
+
         Args:
-            direction (str): 'horizontal' or 'vertical'.
+            direction (str): Flip direction ('horizontal' or 'vertical').
         """
         if self.image_processor.current_image is not None:
             self.image_processor.flip_image(direction)
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
-    
+
     def resize_image(self):
-        """Streches or shrinks the image."""
+        """Resizes the image based on percentage scaling."""
         if self.image_processor.current_image is not None:
-            scale = self.scale_var.get()
-            self.image_processor.resize_image(scale)
+            self.image_processor.resize_image(self.scale_var.get())
             self.update_display()
         else:
             messagebox.showwarning("Warning", "Please load an image first!")
 
 
 def main():
-    """Ignition. Starts the whole app."""
+    """
+    Application entry point.
+    Initialises the Tkinter event loop.
+    """
     root = tk.Tk()
-    app = ImageProcessorApp(root)
+    ImageProcessorApp(root)
     root.mainloop()
 
 
